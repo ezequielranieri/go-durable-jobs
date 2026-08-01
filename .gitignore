@@ -1,0 +1,14 @@
+# Compiled binaries
+/server
+*.exe
+*.test
+
+# Logs
+*.log
+
+# Temp files
+test_*.sql
+*.tmp
+
+# Go
+/vendor/

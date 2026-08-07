@@ -47,7 +47,7 @@ código, sino con tests bajo `-race` y benchmarks reales de scaling (ver secció
 
 ## Decisiones de diseño
 
-Ver [`DECISIONS.md`](./DECISIONS.md) para el detalle completo de decisiones técnicas confirmadas
+Ver [`DECISIONS.es.md`](./DECISIONS.es.md) para el detalle completo de decisiones técnicas confirmadas
 (idempotencia, dequeue, DLQ, circuit breaker, etc.) y su justificación.
 
 Resumen rápido:
@@ -338,7 +338,7 @@ dependencias externas solo agrega complejidad. Si en el futuro se agregara un ti
 que sí invoque APIs externas, el circuit breaker iría en el handler de negocio de ese job
 (por host/API, con umbral de fallos y cooldown antes de abrir), nunca en la maquinaria de
 dequeue/encolado, que no es la capa que falla en ese escenario. (Detalle completo en
-`DECISIONS.md`, sección 2.4.)
+`DECISIONS.es.md`, sección 2.4.)
 
 **Redis.** Quedó en Fase 2 porque Postgres con la unique constraint de `idempotency_key`
 ya cubre la idempotencia del MVP de forma atómica y durable, sin una pieza extra que

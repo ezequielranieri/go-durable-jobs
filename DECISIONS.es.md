@@ -24,7 +24,7 @@ Leyenda de estado: `Accepted` = asentado; `Open` = propuesta, no implementar.
 - **Concurrencia:** Worker pool nativo con `channels`, `context` y `errgroup`. Prohibido usar
   librerías de colas externas (Kafka, RabbitMQ, etc.) en el MVP.
 - **Arquitectura:** Clean Architecture / Hexagonal. El dominio no depende de infraestructura.
-- **HTTP:** `chi` o `net/http` estándar.
+- **HTTP:** `net/http` estándar (`http.ServeMux` con routing por método de Go 1.22+).
 - **Migraciones:** `golang-migrate`, versionadas y reversibles.
 - **Observabilidad:** `slog` para logs estructurados + Prometheus para métricas.
 - **Tracing:** OpenTelemetry — Fase 2, no implementar todavía.
@@ -39,8 +39,12 @@ Leyenda de estado: `Accepted` = asentado; `Open` = propuesta, no implementar.
 - **Librerías de colas externas (Kafka, RabbitMQ, etc.)** prohibidas en el MVP: una tabla
   de Postgres + `SKIP LOCKED` es suficiente para esta carga de trabajo y mantiene la fuente
   de verdad en un solo lugar. Un broker es un costo operativo que el problema aún no exige.
-- **`chi` vs `net/http` estándar**: ambos son aceptables. Este "o" queda deliberadamente
-  abierto — elegir uno durante la implementación y documentarlo aquí.
+- **`chi` rechazado en favor de `net/http` estándar**: la implementación usa
+  `http.ServeMux` con routing por método de Go 1.22+ (`POST /jobs`, `GET /jobs/{id}`).
+  Tres rutas no justifican una dependencia de router de terceros: la stdlib ya cubre
+  el match por método y los wildcards de path, que eran los motivos históricos para
+  recurrir a `chi`. Hoy no existe una cadena de middlewares que necesite sus helpers
+  de contexto por request.
 - **`testcontainers` sobre un harness propio**: brinda semántica real de Postgres (locking,
   `SKIP LOCKED`) en CI con limpieza por test, en lugar de un mock que probaría el código
   pero no la garantía.

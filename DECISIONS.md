@@ -25,7 +25,7 @@ Status legend: `Accepted` = settled; `Open` = proposal, do not implement.
   queue libraries (Kafka, RabbitMQ, etc.) are forbidden in the MVP.
 - **Architecture:** Clean Architecture / Hexagonal. The domain does not depend on
   infrastructure.
-- **HTTP:** `chi` or standard `net/http`.
+- **HTTP:** standard `net/http` (`http.ServeMux` with Go 1.22+ method routing).
 - **Migrations:** `golang-migrate`, versioned and reversible.
 - **Observability:** `slog` for structured logs + Prometheus for metrics.
 - **Tracing:** OpenTelemetry — Phase 2, don't implement yet.
@@ -40,8 +40,12 @@ Status legend: `Accepted` = settled; `Open` = proposal, do not implement.
 - **External queue libraries (Kafka, RabbitMQ, etc.)** are forbidden in the MVP: a Postgres
   table + `SKIP LOCKED` is enough for this workload, and it keeps the source of truth in one
   place. A broker is an operational cost the problem doesn't ask for yet.
-- **`chi` vs standard `net/http`**: both are acceptable. This "or" is intentionally left
-  open — pick one during implementation and document it here.
+- **`chi` rejected in favor of standard `net/http`**: the implementation uses
+  `http.ServeMux` with Go 1.22+ method-based routing (`POST /jobs`, `GET /jobs/{id}`).
+  Three routes don't justify a third-party router dependency: the stdlib now covers
+  method matching and path wildcards, which were the historical reasons to reach for
+  `chi`. No middleware chain exists today that would need its request-scoped context
+  helpers.
 - **`testcontainers` over a hand-rolled harness**: gives real Postgres semantics (locking,
   `SKIP LOCKED`) in CI with per-test cleanup, instead of a mock that would test the code but
   not the guarantee.

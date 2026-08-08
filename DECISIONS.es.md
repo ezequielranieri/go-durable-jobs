@@ -83,6 +83,11 @@ Leyenda de estado: `Accepted` = asentado; `Open` = propuesta, no implementar.
   conditions.
 - La query DEBE filtrar explícitamente `available_at <= NOW()` en el `WHERE` (no confiar
   solo en el índice parcial) para que el delay funcione correctamente.
+- El orden del dequeue es **`priority DESC, created_at ASC`**: `priority` es un campo de
+  contrato de primera clase en `POST /jobs` (default `0`, gana el mayor) y `delay_seconds`
+  del request se guarda como `available_at = NOW() + delay`, así que un job con delay
+  simplemente no es visible hasta su momento. El índice parcial `idx_jobs_status_available`
+  cubre este orden sin un sort extra.
 
 **Alternativas rechazadas**
 - *`LISTEN`/`NOTIFY` de Postgres*: impulsado por eventos en vez de polling, pero las notificaciones no tienen garantía de entrega — un worker que se suscribe tarde se pierde eventos en silencio, y de todos modos se necesita un fallback de polling. El polling de 500ms es más simple y sin pérdidas.
@@ -136,6 +141,10 @@ Leyenda de estado: `Accepted` = asentado; `Open` = propuesta, no implementar.
 **Regla**
 - Exponential backoff + jitter.
 - `max_attempts` configurable por job (default 5). Al superarlo, pasa a `status = 'dead'`.
+- Un **panic en el handler del job se trata como un fallo reintentable**: `ProcessJob` lo
+  recupera, registra el panic en `last_error` y marca el job como fallido con el backoff
+  normal (o `dead` cuando se agotan los intentos). Un handler que paniquea nunca debe
+  matar al worker ni tumbar el pool.
 
 **Alternativas rechazadas**
 - *Número fijo de reintentos sin backoff*: reintentar de inmediato vuelve a golpear la dependencia o el DB que falla — la premisa del README (los parpadeos transitorios se vuelven pérdida permanente, los errores persistentes saturan el sistema) aboga por espaciar los intentos.
@@ -152,6 +161,11 @@ Leyenda de estado: `Accepted` = asentado; `Open` = propuesta, no implementar.
 **Regla**
 - `context` + `signal.Notify`. El servidor debe esperar a que los workers activos terminen
   su job actual antes de salir. Nunca cortar un job a la mitad.
+- Un job en vuelo corre con **`context.Background()`**, deliberadamente NO con el context
+  cancelado del worker: `Pool.Shutdown` cancela el context de polling para detener nuevos
+  dequeues, pero el job que se está procesando conserva su propio context no cancelable y
+  corre hasta terminar. Esto es lo que hace que "nunca cortar un job a la mitad" se cumpla
+  a nivel de goroutine incluso después de recibir una señal.
 
 **Alternativas rechazadas**
 - *Matar con `context.Cancel` sin drain*: cancelar a mitad del job aborta el procesamiento y puede dejar el job en un estado incorrecto (`running` para siempre, o a medias) — el log de shutdown del README muestra la secuencia deseada: terminar el job en vuelo y luego salir.

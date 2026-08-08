@@ -84,6 +84,11 @@ Status legend: `Accepted` = settled; `Open` = proposal, do not implement.
   conditions.
 - The query MUST explicitly filter `available_at <= NOW()` in the `WHERE` (don't rely only
   on the partial index) so delay works correctly.
+- The dequeue order is **`priority DESC, created_at ASC`**: `priority` is a first-class
+  contract field on `POST /jobs` (default `0`, higher wins) and `delay_seconds` on the
+  request is stored as `available_at = NOW() + delay`, so a delayed job simply isn't
+  visible until its time. The partial index `idx_jobs_status_available` covers this
+  ordering without an extra sort.
 
 **Alternatives rejected**
 - *Postgres `LISTEN`/`NOTIFY`*: event-driven instead of polling, but notifications have no delivery guarantee — a worker that subscribes late silently misses events, and you need a polling fallback anyway. 500ms polling is simpler and lossless.
@@ -138,6 +143,10 @@ Status legend: `Accepted` = settled; `Open` = proposal, do not implement.
 - Exponential backoff + jitter.
 - `max_attempts` configurable per job (default 5). When exceeded, the job goes to
   `status = 'dead'`.
+- A **panic in the job handler is treated as a retryable failure**: `ProcessJob` recovers
+  it, records the panic in `last_error`, and marks the job failed with the normal backoff
+  (or `dead` when attempts are exhausted). A panicking handler must never kill the worker
+  or crash the pool.
 
 **Alternatives rejected**
 - *Fixed retry count without backoff*: retrying immediately re-hammers the failing dependency or DB — the README's premise (transient blips become permanent loss, persistent errors saturate the system) argues for spacing attempts out.
@@ -154,6 +163,11 @@ Status legend: `Accepted` = settled; `Open` = proposal, do not implement.
 **Rule**
 - `context` + `signal.Notify`. The server must wait for active workers to finish their
   current job before exiting. Never cut a job off mid-way.
+- An in-flight job runs on **`context.Background()`**, deliberately NOT the worker's
+  cancelled context: `Pool.Shutdown` cancels the polling context to stop new dequeues, but
+  the job currently being processed keeps its own non-cancellable context and runs to
+  completion. This is what makes "never cut a job off mid-way" hold at the goroutine level
+  even after a signal arrives.
 
 **Alternatives rejected**
 - *`context.Cancel` kill without drain*: cancelling mid-job aborts processing and can leave the job in the wrong state (`running` forever, or half-done) — the README's shutdown log shows the desired sequence: finish the in-flight job, then exit.

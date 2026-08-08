@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -167,6 +168,9 @@ func TestEnqueueJob_NegativeMaxAttempts(t *testing.T) {
 	}
 	if !errors.Is(err, application.ErrInvalidRequest) {
 		t.Errorf("expected ErrInvalidRequest, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "(0 = default 5)") {
+		t.Errorf("expected error message to document the 0 = default 5 contract, got %q", err.Error())
 	}
 	if repo.Created() != 0 {
 		t.Errorf("expected no job created, got %d", repo.Created())

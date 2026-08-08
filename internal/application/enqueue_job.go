@@ -53,7 +53,7 @@ func (uc *EnqueueJob) Execute(ctx context.Context, req EnqueueJobRequest) (*Enqu
 	}
 
 	if req.MaxAttempts < 0 {
-		return nil, fmt.Errorf("%w: max_attempts must be >= 1 when provided", ErrInvalidRequest)
+		return nil, fmt.Errorf("%w: max_attempts must be >= 1 when provided (0 = default 5)", ErrInvalidRequest)
 	}
 	if req.MaxAttempts == 0 {
 		req.MaxAttempts = 5

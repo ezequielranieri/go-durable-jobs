@@ -46,6 +46,3 @@ func NextBackoff(attempt int, baseDelay time.Duration) time.Duration {
 	return time.Duration(exp + jitter)
 }
 
-func (j *Job) IsDead() bool {
-	return j.Attempts >= j.MaxAttempts
-}

@@ -85,27 +85,5 @@ func TestNextBackoff_JitterNeverNegative(t *testing.T) {
 	}
 }
 
-func TestIsDead(t *testing.T) {
-	tests := []struct {
-		name        string
-		attempts    int
-		maxAttempts int
-		want        bool
-	}{
-		{name: "below max attempts", attempts: 4, maxAttempts: 5, want: false},
-		{name: "at max attempts", attempts: 5, maxAttempts: 5, want: true},
-		{name: "above max attempts", attempts: 6, maxAttempts: 5, want: true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			job := &Job{Attempts: tt.attempts, MaxAttempts: tt.maxAttempts}
-			if got := job.IsDead(); got != tt.want {
-				t.Errorf("Job{Attempts: %d, MaxAttempts: %d}.IsDead() = %v, want %v",
-					tt.attempts, tt.maxAttempts, got, tt.want)
-			}
-		})
-	}
-}
 
 
